@@ -17,4 +17,11 @@ class APRSResponse {
 
     @SerializedName("entries")
     var entries: List<APRSEntry>? = null
+
+    fun isSuccess(): Boolean {
+        when (result) {
+            "ok" -> return true
+            else -> return false
+        }
+    }
 }
