@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">deadshot</string>
+    <string name="call_sign_button">Change call sign</string>
 </resources>

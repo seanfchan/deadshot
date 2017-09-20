@@ -1,9 +1,15 @@
 package com.seanfchan.deadshot
 
+import android.app.AlertDialog
+import android.app.Dialog
+import android.content.DialogInterface
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
 import com.seanfchan.deadshot.api.APRSResponse
 import com.seanfchan.deadshot.api.APRSService
 import com.seanfchan.deadshot.util.Constants
@@ -20,14 +26,16 @@ class TrackerActivity : AppCompatActivity() {
     lateinit var aprsService: APRSService
     lateinit var subscriptions: CompositeDisposable
     lateinit var currentUserLocation: LocationHolder
-    var azimuthDegrees: Double = 0.0
-    var pitchDegree: Double = 0.0
+
+    lateinit var callSignButton: Button
 
     lateinit var accuracyContainer: View
     var grayColor: Int = 0
     var redColor: Int = 0
     var yellowColor: Int = 0
     var greenColor: Int = 0
+
+    var callSignToQuery: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +48,10 @@ class TrackerActivity : AppCompatActivity() {
 
         val res = resources
         accuracyContainer = findViewById(R.id.accuracy_container)
+        callSignButton = findViewById(R.id.call_sign)
+        callSignButton.setOnClickListener {
+            showCallSignDialog()
+        }
 
         grayColor = res.getColor(R.color.gray)
         redColor = res.getColor(R.color.red)
@@ -51,14 +63,12 @@ class TrackerActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        subscriptions.add(aprsPollingObservable().subscribe())
-        setupGPSSensor()
-        setUpRotationSensor()
+        setup()
     }
 
     override fun onStop() {
         super.onStop()
-        subscriptions.clear()
+        cleanUp()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -74,11 +84,28 @@ class TrackerActivity : AppCompatActivity() {
         }
     }
 
-    fun aprsPollingObservable(): Observable<APRSResponse> {
-        return Observable.interval(Constants.APRS_POLLING_INTERVAL_SECONDS, TimeUnit.SECONDS)
+    fun showCallSignDialog() {
+        val dialog = AlertDialog.Builder(this)
+        val callSignLayout = LayoutInflater.from(this).inflate(R.layout.dialog_call_sign, null)
+        val callSignEditText = callSignLayout.findViewById<EditText>(R.id.call_sign)
+
+        dialog.setView(callSignLayout)
+                .setPositiveButton("Set", { _, _ ->
+                    callSignToQuery = callSignEditText.text.toString()
+                    cleanUp()
+                    setup()
+                    setCallSignButton(callSignToQuery)
+                })
+                .setNegativeButton("Cancel", { _, _ ->  })
+
+        dialog.show()
+    }
+
+    fun aprsPollingObservable(callSign: String?): Observable<APRSResponse> {
+        return Observable.interval(0, Constants.APRS_POLLING_INTERVAL_SECONDS, TimeUnit.SECONDS)
                 .observeOn(Schedulers.io())
                 .flatMap {
-                    aprsService.getAPRData(Constants.CALL_SIGN)
+                    aprsService.getAPRData(callSign ?: Constants.CALL_SIGN)
                 }
                 .doOnNext {
                     handleAPRSResponse(it)
@@ -94,6 +121,16 @@ class TrackerActivity : AppCompatActivity() {
         if (entries == null || entries.isEmpty()) {
             return
         }
+    }
+
+    fun setup() {
+        subscriptions.add(aprsPollingObservable(callSignToQuery).subscribe())
+        setupGPSSensor()
+//        setUpRotationSensor()
+    }
+
+    fun cleanUp() {
+        subscriptions.clear()
     }
 
     fun setupGPSSensor() {
@@ -126,6 +163,14 @@ class TrackerActivity : AppCompatActivity() {
                 }
                 .subscribe()
         )
+    }
+
+    fun setCallSignButton(text: String?) {
+        if (text.isNullOrBlank()) {
+            callSignButton.setText(R.string.call_sign_button)
+        } else {
+            callSignButton.text = text
+        }
     }
 
     class LocationHolder {
