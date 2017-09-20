@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.Toast
 import com.seanfchan.deadshot.api.APRSService
 import com.seanfchan.deadshot.util.Util
@@ -98,7 +99,7 @@ class MainActivity : AppCompatActivity() {
 
     fun setUpCompassObservable() {
         val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         if (sensor == null) {
             Toast.makeText(this, "You do not have the sensors to create a compass", Toast.LENGTH_SHORT).show()
             return
@@ -128,7 +129,17 @@ class MainActivity : AppCompatActivity() {
 
         compositeDisposable.add(compassEventObservable
                 .doOnNext {
-                    it.values
+                    val rotMat = FloatArray(9)
+                    val azimuthAboutYAxis = FloatArray(9)
+                    val pitchAboutZAxis = FloatArray(9)
+                    val vectors = it.values
+                    val orientation = FloatArray(3)
+
+                    SensorManager.getRotationMatrixFromVector(rotMat, vectors)
+                    SensorManager.remapCoordinateSystem(rotMat, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, azimuthAboutYAxis)
+                    SensorManager.remapCoordinateSystem(rotMat, SensorManager.AXIS_Z, SensorManager.AXIS_X, pitchAboutZAxis)
+                    val azimuth: Int = ((Math.toDegrees(SensorManager.getOrientation(pitchAboutZAxis, orientation)[1].toDouble()))).toInt()
+                    Log.e("SEAN", String.format("azimuth: %d", azimuth))
                 }
                 .subscribe()
         )
