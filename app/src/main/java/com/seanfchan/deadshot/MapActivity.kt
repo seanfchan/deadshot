@@ -31,8 +31,6 @@ class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
 
     private var subscription: Disposable? = null
     private var alreadyZoomed: Boolean = false
-    private val alreadyDrawnMarkerIds: MutableSet<String> = HashSet()
-    private val currentPolylines: MutableSet<Polyline> = HashSet()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -144,7 +142,7 @@ class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
         if (trackerMap.isEmpty()) {
             return
         }
-        clearPolylines()
+        map.clear()
         val listOfTrackers: MutableCollection<MutableList<APRSEntry>> = trackerMap.values
         listOfTrackers.forEach {
             val listOfPositions = it
@@ -157,22 +155,12 @@ class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
 
     private fun renderEntry(entry: APRSEntry, isLast: Boolean): LatLng {
         val position = positionFromEntry(entry)
-        val id = markerIdFromEntry(entry)
-
-        if (alreadyDrawnMarkerIds.contains(id)) {
-            return position
-        }
-        alreadyDrawnMarkerIds.add(id)
 
         val time: String = formattedTimeFromEntry(entry)
         val altitude: String = formattedAltitudeFromEntry(entry)
 
         map.addMarker(createMarker(altitude, time, position, entry.type == CAR_TYPE, isLast))
         return position
-    }
-
-    private fun markerIdFromEntry(entry: APRSEntry): String {
-        return entry.name + entry.time
     }
 
     private fun positionFromEntry(entry: APRSEntry): LatLng {
@@ -216,13 +204,6 @@ class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
                 .icon(getMarkerIconFromDrawable(getDrawable(iconResource)))
     }
 
-    private fun clearPolylines() {
-        currentPolylines.forEach {
-            it.remove()
-        }
-        currentPolylines.clear()
-    }
-
     private fun zoomMapIfNeeded(bounds: LatLngBounds) {
         if (!alreadyZoomed) {
             map.setOnMapLoadedCallback {
@@ -251,12 +232,12 @@ class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
             lineColor = resources.getColor(R.color.line_color)
         }
 
-        currentPolylines.add(map.addPolyline(
+        map.addPolyline(
                 PolylineOptions()
                         .width(resources.getDimensionPixelOffset(R.dimen.line_width).toFloat())
                         .color(lineColor)
                         .addAll(polylinePointList)
-        ))
+        )
     }
 
     private fun getMarkerIconFromDrawable(drawable: Drawable): BitmapDescriptor {
