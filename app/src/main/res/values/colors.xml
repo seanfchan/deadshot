@@ -8,5 +8,5 @@
     <color name="red">#FF0000</color>
     <color name="yellow">#FFFF00</color>
     <color name="green">#00FF00</color>
-
+    <color name="line_color">#EF4949</color>
 </resources>

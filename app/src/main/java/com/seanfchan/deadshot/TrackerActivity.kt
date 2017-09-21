@@ -2,7 +2,6 @@ package com.seanfchan.deadshot
 
 import android.app.AlertDialog
 import android.hardware.GeomagneticField
-import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.location.Location
 import android.os.Bundle
@@ -10,11 +9,9 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import com.seanfchan.deadshot.api.APRSEntry
-import com.seanfchan.deadshot.api.APRSResponse
 import com.seanfchan.deadshot.api.APRSService
 import com.seanfchan.deadshot.util.CalcUtil
 import com.seanfchan.deadshot.util.Constants
@@ -23,7 +20,6 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import java.util.concurrent.TimeUnit
 
 class TrackerActivity : AppCompatActivity() {
 
@@ -131,47 +127,12 @@ class TrackerActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun aprsPollingObservable(callSign: String?): Observable<APRSResponse> {
-//        return Observable.interval(0, Constants.APRS_POLLING_INTERVAL_SECONDS, TimeUnit.SECONDS)
-//                .observeOn(Schedulers.io())
-//                .flatMap {
-//                    aprsService.getAPRData(callSign ?: Constants.CALL_SIGN)
-//                }
-//                .doOnNext {
-//                    handleAPRSResponse(it)
-//                }
-
-        return Observable.interval(0, 1, TimeUnit.SECONDS)
-                .flatMap {
-                    val aprsEntry: APRSEntry = APRSEntry()
-                    aprsEntry.name = Constants.CALL_SIGN
-                    aprsEntry.lng = "-121.9544772"
-                    aprsEntry.lat = "37.3120376"
-                    aprsEntry.altitude = "200"
-
-                    val response: APRSResponse = APRSResponse()
-                    response.result = "ok"
-                    val entries = ArrayList<APRSEntry>(1)
-                    entries.add(aprsEntry)
-                    response.entries = entries
-                    Observable.just(response)
-                }
-                .doOnNext {
-                    handleAPRSResponse(it)
-                }
-    }
-
-    fun handleAPRSResponse(response: APRSResponse) {
-        if (!response.isSuccess()) {
-            return
-        }
-
-        val entries = response.entries
+    fun handleAPRSResponse(entries: List<APRSEntry>?) {
         if (entries == null || entries.isEmpty()) {
             return
         }
 
-        val result = findAPRSEntry(callSignToQuery, response.entries)
+        val result = findAPRSEntry(callSignToQuery, entries)
         if (result != null) {
             lastAPRSEntry = result
             hasReceivedAPRSEntry = true
@@ -302,7 +263,7 @@ class TrackerActivity : AppCompatActivity() {
             return null
         }
 
-        for (entry in entries) {
+        for (entry in entries.reversed()) {
             if (entry.name == callSign) {
                 return entry
             }
@@ -311,7 +272,11 @@ class TrackerActivity : AppCompatActivity() {
     }
 
     fun setup() {
-        subscriptions.add(aprsPollingObservable(callSignToQuery).subscribe())
+        val locationboardEntryCache = (application as DeadShot).locationEntryCache
+        locationboardEntryCache.startPolling()
+        subscriptions.add(locationboardEntryCache.cacheUpdatedObservable().subscribe {
+            handleAPRSResponse(locationboardEntryCache.entries())
+        })
         setupGPSSensor()
         setUpLocationSensors()
     }
@@ -323,36 +288,25 @@ class TrackerActivity : AppCompatActivity() {
     }
 
     fun setupGPSSensor() {
-//        subscriptions.add(Util.getGPSSensorStream(this, ACCESS_FINE_LOCATION_CODE)
-//                .doOnNext {
-//                    currentUserLocation.lat = it.latitude
-//                    currentUserLocation.long = it.longitude
-//                    currentUserLocation.altitude = it.altitude
-//                    hasReceivedLocation = true
-//
-//                    val aprsEntry: APRSEntry = APRSEntry()
-//                    aprsEntry.lng = "-122.4163504"
-//                    aprsEntry.lat = "37.7801809"
-//                    lastAPRSEntry = aprsEntry
-//                    hasReceivedAPRSEntry = true
-//
-//                    doTheMathyThings()
-//                }
-//                .subscribe()
-//        )
+        subscriptions.add(Util.getGPSSensorStream(this, ACCESS_FINE_LOCATION_CODE)
+                .doOnNext {
+                    currentUserLocation.lat = it.latitude
+                    currentUserLocation.long = it.longitude
+                    currentUserLocation.altitude = it.altitude
+                    hasReceivedLocation = true
 
-        currentUserLocation.lat = 37.310761
-        currentUserLocation.long = -121.9510392
-        currentUserLocation.altitude = 47.0
-        hasReceivedLocation = true
+                    val geomagneticField = GeomagneticField(currentUserLocation.lat.toFloat(),
+                            currentUserLocation.long.toFloat(),
+                            currentUserLocation.altitude.toFloat(),
+                            System.currentTimeMillis())
 
-        val geomagneticField = GeomagneticField(currentUserLocation.lat.toFloat(),
-                currentUserLocation.long.toFloat(),
-                currentUserLocation.altitude.toFloat(),
-                System.currentTimeMillis())
+                    currentUserLocation.declination = geomagneticField.declination.toDouble()
+                    currentUserLocation.inclination = geomagneticField.inclination.toDouble()
 
-        currentUserLocation.declination = geomagneticField.declination.toDouble()
-        currentUserLocation.inclination = geomagneticField.inclination.toDouble()
+                    doTheMathyThings()
+                }
+                .subscribe()
+        )
     }
 
     fun setUpLocationSensors() {

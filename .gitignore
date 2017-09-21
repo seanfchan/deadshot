@@ -7,3 +7,9 @@
 /build
 /captures
 .externalNativeBuild
+keystore.properties
+periscopespace.keystore
+fastlane
+app/release
+app/fabric.properties
+

@@ -5,8 +5,9 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface APRSService {
-    @GET("get")
-    fun getAPRData(@Query("name") name: String, @Query("what") what: String = "loc",
-                   @Query("apikey") apiKey: String = "105203.iYQjtqjtpgUFIr", @Query("format") format: String = "json") :
-            Observable<APRSResponse>
+    @GET("/")
+    fun getAPRData(@Query("latestOnly") what: String = "true") : Observable<List<APRSEntry>>
+
+    @GET("/")
+    fun getAllAPRData() : Observable<List<APRSEntry>>
 }

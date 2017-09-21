@@ -4,6 +4,7 @@ import android.app.Application
 import com.facebook.stetho.Stetho
 import com.facebook.stetho.okhttp3.StethoInterceptor
 import com.seanfchan.deadshot.api.APRSService
+import com.seanfchan.deadshot.cache.LocationEntryCache
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -14,6 +15,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 class DeadShot : Application() {
 
     lateinit var aprsService: APRSService
+    lateinit var locationEntryCache: LocationEntryCache
 
     override fun onCreate() {
         super.onCreate()
@@ -43,14 +45,13 @@ class DeadShot : Application() {
                 .build()
 
         val retrofit = Retrofit.Builder()
-                .baseUrl("https://api.aprs.fi/api/")
+                .baseUrl("https://periscope-aprs.herokuapp.com/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build()
 
         aprsService = retrofit.create(APRSService::class.java)
+        locationEntryCache = LocationEntryCache(aprsService)
     }
-
-
 }

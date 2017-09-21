@@ -12,9 +12,6 @@ class APRSEntry {
     @SerializedName("time")
     var time: String? = null
 
-    @SerializedName("lasttime")
-    var lastTime: String? = null
-
     @SerializedName("lat")
     var lat: String? = null
 
