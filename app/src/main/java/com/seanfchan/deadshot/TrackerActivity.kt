@@ -36,6 +36,8 @@ class TrackerActivity : AppCompatActivity() {
 
     lateinit var bearingText: TextView
     lateinit var pitchText: TextView
+    lateinit var azimuthText: TextView
+    lateinit var currentPitchText: TextView
 
     lateinit var targetBox: View
 
@@ -72,6 +74,8 @@ class TrackerActivity : AppCompatActivity() {
         bearingText = findViewById(R.id.bearing)
         pitchText = findViewById(R.id.pitch)
         targetBox = findViewById(R.id.target_box)
+        azimuthText = findViewById(R.id.azimuth)
+        currentPitchText = findViewById(R.id.current_pitch)
         targetBoxWidth = targetBox.layoutParams.width
         targetBoxHeight = targetBox.layoutParams.height
         lastAPRSEntry = APRSEntry()
@@ -201,6 +205,8 @@ class TrackerActivity : AppCompatActivity() {
             return
         }
 
+        setText(currentUserLocation.azimuthDegrees.toString(), azimuthText)
+
         val distanceResult = FloatArray(3)
         Location.distanceBetween(userLat, userLong, payloadLat, payloadLong, distanceResult)
         val distance = distanceResult[0]
@@ -256,6 +262,7 @@ class TrackerActivity : AppCompatActivity() {
 
         val deltaZ = payloadAltitude - currentUserLocation.altitude
         val radPitch = Math.atan(deltaZ / distance)
+        setText(currentUserLocation.pitchDegree.toString(), currentPitchText)
         setText(Math.toDegrees(radPitch).toString(), pitchText)
 //        Log.e("SEAN", String.format("pitch: %f", Math.toDegrees(radPitch)))
         val yDistanceMetersFromCenterOnScreen = Math.tan(radPitch) * Constants.VIEWPORT_TO_PHONE
