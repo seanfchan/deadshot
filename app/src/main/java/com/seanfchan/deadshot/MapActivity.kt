@@ -2,7 +2,6 @@ package com.seanfchan.deadshot
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.TextView
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -22,7 +21,7 @@ import android.support.annotation.ColorInt
 import android.support.annotation.DrawableRes
 import com.google.android.gms.maps.model.BitmapDescriptor
 
-class MapActivity : AppCompatActivity(), GoogleMap.InfoWindowAdapter {
+class MapActivity : BaseActivity(), GoogleMap.InfoWindowAdapter {
     private val CAR_TYPE = "car"
 
     private lateinit var mapView: MapView

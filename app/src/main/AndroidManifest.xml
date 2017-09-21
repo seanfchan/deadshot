@@ -32,6 +32,10 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key"/>
 
+        <meta-data
+            android:name="io.fabric.ApiKey"
+            android:value="08e6adb46bb9080f24f9c8e2458c64d2105af5eb" />
+
         <activity android:name=".MainActivity"
                   android:screenOrientation="portrait">
             <intent-filter>
