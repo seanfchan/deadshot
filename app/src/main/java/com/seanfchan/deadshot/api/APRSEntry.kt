@@ -20,4 +20,7 @@ class APRSEntry {
 
     @SerializedName("lng")
     var lng: String? = null
+
+    @SerializedName("altitude")
+    var altitude: String? = null
 }

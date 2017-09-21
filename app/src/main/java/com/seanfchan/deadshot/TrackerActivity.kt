@@ -2,6 +2,7 @@ package com.seanfchan.deadshot
 
 import android.app.AlertDialog
 import android.hardware.GeomagneticField
+import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.location.Location
 import android.os.Bundle
@@ -11,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import com.seanfchan.deadshot.api.APRSEntry
 import com.seanfchan.deadshot.api.APRSResponse
 import com.seanfchan.deadshot.api.APRSService
@@ -18,6 +20,7 @@ import com.seanfchan.deadshot.util.CalcUtil
 import com.seanfchan.deadshot.util.Constants
 import com.seanfchan.deadshot.util.Util
 import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
@@ -31,7 +34,9 @@ class TrackerActivity : AppCompatActivity() {
     lateinit var currentUserLocation: LocationHolder
     lateinit var lastAPRSEntry: APRSEntry
 
-    lateinit var callSignButton: Button
+    lateinit var bearingText: TextView
+    lateinit var pitchText: TextView
+
     lateinit var targetBox: View
 
     lateinit var accuracyContainer: View
@@ -64,15 +69,12 @@ class TrackerActivity : AppCompatActivity() {
 
         val res = resources
         accuracyContainer = findViewById(R.id.accuracy_container)
+        bearingText = findViewById(R.id.bearing)
+        pitchText = findViewById(R.id.pitch)
         targetBox = findViewById(R.id.target_box)
         targetBoxWidth = targetBox.layoutParams.width
         targetBoxHeight = targetBox.layoutParams.height
         lastAPRSEntry = APRSEntry()
-
-        callSignButton = findViewById(R.id.call_sign)
-        callSignButton.setOnClickListener {
-            showCallSignDialog()
-        }
 
         grayColor = res.getColor(R.color.gray)
         redColor = res.getColor(R.color.red)
@@ -85,6 +87,10 @@ class TrackerActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         setup()
+    }
+
+    override fun onPause() {
+        super.onPause()
     }
 
     override fun onStop() {
@@ -115,9 +121,8 @@ class TrackerActivity : AppCompatActivity() {
                     callSignToQuery = callSignEditText.text.toString()
                     cleanUp()
                     setup()
-                    setCallSignButton(callSignToQuery)
                 })
-                .setNegativeButton("Cancel", { _, _ ->  })
+                .setNegativeButton("Cancel", { _, _ -> })
 
         dialog.show()
     }
@@ -134,15 +139,11 @@ class TrackerActivity : AppCompatActivity() {
 
         return Observable.interval(0, 1, TimeUnit.SECONDS)
                 .flatMap {
-                    currentUserLocation.lat = 37.776797
-                    currentUserLocation.long = -122.416603
-                    currentUserLocation.altitude = 10.0
-                    hasReceivedLocation = true
-
                     val aprsEntry: APRSEntry = APRSEntry()
                     aprsEntry.name = Constants.CALL_SIGN
-                    aprsEntry.lng = "-122.4163504"
-                    aprsEntry.lat = "37.7801809"
+                    aprsEntry.lng = "-121.9544772"
+                    aprsEntry.lat = "37.3120376"
+                    aprsEntry.altitude = "200"
 
                     val response: APRSResponse = APRSResponse()
                     response.result = "ok"
@@ -194,8 +195,9 @@ class TrackerActivity : AppCompatActivity() {
         val pitchDegrees = currentUserLocation.pitchDegree
         val payloadLat = lastAPRSEntry.lat?.toDouble()
         val payloadLong = lastAPRSEntry.lng?.toDouble()
+        val payloadAltitude = lastAPRSEntry.altitude?.toDouble()
 
-        if (payloadLat == null || payloadLong == null) {
+        if (payloadLat == null || payloadLong == null || payloadAltitude == null) {
             return
         }
 
@@ -203,34 +205,89 @@ class TrackerActivity : AppCompatActivity() {
         Location.distanceBetween(userLat, userLong, payloadLat, payloadLong, distanceResult)
         val distance = distanceResult[0]
 
-        val deltaX = payloadLong - userLong
-        val half: Half
-        if (deltaX < 0) {
-            half = Half.LEFT
-        } else {
-            half = Half.RIGHT
-        }
+        val payloadHalf = getHalf(userLong, payloadLong)
+        val userHalf = getHalfBasedOnTrueNorth(currentUserLocation.azimuthDegrees)
+
+        val bearing = CalcUtil.getBearing(userLat, userLong, payloadLat, payloadLong)
+        setText(bearing.toString(), bearingText)
 
         Location.distanceBetween(userLat, userLong, payloadLat, userLong, distanceResult)
         val yDistance = distanceResult[0]
 
         val radFromNorth = Math.acos(yDistance / distance.toDouble())
+        val degreeFromNorth = Math.toDegrees(radFromNorth)
+
+        val azimuth = currentUserLocation.azimuthDegrees
+        val totalDegrees: Double
+        if (payloadHalf == userHalf) {
+            totalDegrees = currentUserLocation.azimuthDegrees - bearing
+        } else {
+            if (payloadHalf == Half.LEFT) {
+                val clockwiseDegree = 360 - bearing - azimuth
+                val counterClockwiseDegree = bearing + azimuth
+                if (clockwiseDegree < counterClockwiseDegree) {
+                    totalDegrees = clockwiseDegree
+                } else {
+                    totalDegrees = -counterClockwiseDegree
+                }
+            } else {
+                val clockwiseDegree = 360 - azimuth - bearing
+                val counterClockwiseDegree = azimuth + bearing
+                if (clockwiseDegree < counterClockwiseDegree) {
+                    totalDegrees = clockwiseDegree
+                } else {
+                    totalDegrees = -counterClockwiseDegree
+                }
+            }
+        }
+
+        val rad = Math.toRadians(totalDegrees)
+
         //Calculations for x from center of screen, this is assuming the phone is 0.3 meter, ~1 foot, away from your eyes
-        val xDistanceMetersFromNorthOnScreen = (Math.tan(radFromNorth) * Constants.VIEWPORT_TO_PHONE)
+        val xDistanceMetersFromNorthOnScreen = (Math.tan(rad) * Constants.VIEWPORT_TO_PHONE)
         val xDistanceInchesFromNorthOnScreen = CalcUtil.convertMetersToInch(xDistanceMetersFromNorthOnScreen)
         val pixelsOffsetOnScreen = Util.getScreenDensityDpi(this) * xDistanceInchesFromNorthOnScreen
-        val xOnScreen: Double
-        if (half == Half.LEFT) {
-            xOnScreen = -pixelsOffsetOnScreen
+//        val xOnScreen: Double
+//        if (half == Half.LEFT) {
+//            xOnScreen = -pixelsOffsetOnScreen
+//        } else {
+//            xOnScreen = pixelsOffsetOnScreen
+//        }
+
+        val deltaZ = payloadAltitude - currentUserLocation.altitude
+        val radPitch = Math.atan(deltaZ / distance)
+        setText(Math.toDegrees(radPitch).toString(), pitchText)
+//        Log.e("SEAN", String.format("pitch: %f", Math.toDegrees(radPitch)))
+        val yDistanceMetersFromCenterOnScreen = Math.tan(radPitch) * Constants.VIEWPORT_TO_PHONE
+        val yDistanceInchesFromCenterOnScreen = CalcUtil.convertMetersToInch(yDistanceMetersFromCenterOnScreen)
+        val yPixelOffsetOnScreen = Util.getScreenDensityDpi(this) * yDistanceInchesFromCenterOnScreen
+        val yOnScreen: Double
+        if (deltaZ < 0) {
+            yOnScreen = yPixelOffsetOnScreen
         } else {
-            xOnScreen = pixelsOffsetOnScreen
+            yOnScreen = -yPixelOffsetOnScreen
         }
-        setPositionOfTarget(xOnScreen.toInt() - CalcUtil.convertDegreeToPixels(this, azimuthDegrees - currentUserLocation.declination).toInt(), 0)
+
+        Log.e("SEAN", String.format("azimuth: %f", currentUserLocation.azimuthDegrees))
+//        Log.e("SEAN", String.format("pitch: %f", currentUserLocation.pitchDegree))
+
+
+//        setPositionOfTarget((xOnScreen + CalcUtil.convertDegreeToPixels(this, azimuthDegrees + currentUserLocation.declination)).toInt(), (yOnScreen + CalcUtil.convertDegreeToPixels(this, pitchDegrees)).toInt())
+        setPositionOfTarget(-pixelsOffsetOnScreen.toInt(), (yOnScreen + CalcUtil.convertDegreeToPixels(this, pitchDegrees)).toInt())
+//        Log.e("SEAN", String.format("azimuth: %f", currentUserLocation.azimuthDegrees + currentUserLocation.declination))
     }
 
     fun setPositionOfTarget(xPos: Int, yPos: Int) {
         targetBox.x = Util.getScreenSize(this).x / 2 + xPos - (targetBoxWidth / 2.0F)
         targetBox.y = Util.getScreenSize(this).y / 2 + yPos - (targetBoxHeight / 2.0F)
+    }
+
+    fun setText(text: String, textView: TextView) {
+        Observable.fromCallable {
+            textView.text = text
+        }
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe()
     }
 
     fun findAPRSEntry(callSign: String?, entries: List<APRSEntry>?): APRSEntry? {
@@ -249,7 +306,7 @@ class TrackerActivity : AppCompatActivity() {
     fun setup() {
         subscriptions.add(aprsPollingObservable(callSignToQuery).subscribe())
         setupGPSSensor()
-        setUpRotationSensor()
+        setUpLocationSensors()
     }
 
     fun cleanUp() {
@@ -277,18 +334,21 @@ class TrackerActivity : AppCompatActivity() {
 //                .subscribe()
 //        )
 
-        currentUserLocation.lat = 37.776797
-        currentUserLocation.long = -122.416603
-        currentUserLocation.altitude = 10.0
+        currentUserLocation.lat = 37.310761
+        currentUserLocation.long = -121.9510392
+        currentUserLocation.altitude = 47.0
         hasReceivedLocation = true
 
-        currentUserLocation.declination = GeomagneticField(currentUserLocation.lat.toFloat(),
+        val geomagneticField = GeomagneticField(currentUserLocation.lat.toFloat(),
                 currentUserLocation.long.toFloat(),
                 currentUserLocation.altitude.toFloat(),
-                System.currentTimeMillis()).declination.toDouble()
+                System.currentTimeMillis())
+
+        currentUserLocation.declination = geomagneticField.declination.toDouble()
+        currentUserLocation.inclination = geomagneticField.inclination.toDouble()
     }
 
-    fun setUpRotationSensor() {
+    fun setUpLocationSensors() {
         subscriptions.add(Util.getRotationVectorObservable(this)
                 .observeOn(Schedulers.computation())
                 .doOnNext {
@@ -299,14 +359,12 @@ class TrackerActivity : AppCompatActivity() {
                     val orientation = FloatArray(3)
 
                     SensorManager.getRotationMatrixFromVector(rotMat, vectors)
-                    SensorManager.remapCoordinateSystem(rotMat, SensorManager.AXIS_Y, SensorManager.AXIS_MINUS_X, azimuthAboutYAxis)
-                    currentUserLocation.azimuthDegrees = ((Math.toDegrees(SensorManager.getOrientation(azimuthAboutYAxis, orientation)[0].toDouble())))
+                    SensorManager.remapCoordinateSystem(rotMat, SensorManager.AXIS_X, SensorManager.AXIS_Z, azimuthAboutYAxis)
+                    currentUserLocation.azimuthDegrees = (Math.toDegrees(SensorManager.getOrientation(azimuthAboutYAxis, orientation)[0].toDouble()) - currentUserLocation.declination + 360) % 360
 
                     SensorManager.remapCoordinateSystem(rotMat, SensorManager.AXIS_Z, SensorManager.AXIS_X, pitchAboutZAxis)
                     currentUserLocation.pitchDegree = ((Math.toDegrees(SensorManager.getOrientation(pitchAboutZAxis, orientation)[1].toDouble())))
                     hasReceivedRotation = true
-
-                    Log.e("SEAN", String.format("azimuth: %f", currentUserLocation.azimuthDegrees - currentUserLocation.declination))
 
                     doTheMathyThings()
                 }
@@ -314,11 +372,20 @@ class TrackerActivity : AppCompatActivity() {
         )
     }
 
-    fun setCallSignButton(text: String?) {
-        if (text.isNullOrBlank()) {
-            callSignButton.setText(R.string.call_sign_button)
+    fun getHalf(originLong: Double, targetLong: Double): Half {
+        val deltaLong = originLong - targetLong
+        if (deltaLong < 0) {
+            return Half.RIGHT
         } else {
-            callSignButton.text = text
+            return Half.LEFT
+        }
+    }
+
+    fun getHalfBasedOnTrueNorth(degree: Double): Half {
+        if (degree >= 0 && degree <= 180) {
+            return Half.RIGHT
+        } else {
+            return Half.LEFT
         }
     }
 
@@ -329,5 +396,6 @@ class TrackerActivity : AppCompatActivity() {
         var azimuthDegrees: Double = 0.0
         var pitchDegree: Double = 0.0
         var declination: Double = 0.0
+        var inclination: Double = 0.0
     }
 }

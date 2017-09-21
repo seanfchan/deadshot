@@ -36,4 +36,12 @@ object CalcUtil {
     fun convertDegreeToPixels(c: Context, degree: Double): Double {
         return degree * Constants.INCHES_ON_SCREEN_PER_DEGREE * Util.getScreenDensityDpi(c)
     }
+
+    fun getBearing(lat1: Double, long1: Double, lat2: Double, long2: Double): Double {
+        val longDelta = long2 - long1
+        val y = Math.sin(longDelta) * Math.cos(lat2)
+        val x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(longDelta)
+
+        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360
+    }
 }

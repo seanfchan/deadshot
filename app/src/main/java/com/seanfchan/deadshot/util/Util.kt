@@ -95,6 +95,38 @@ object Util {
         }
     }
 
+    fun getSensorObservable(activity: Activity, sensorType: Int): Observable<SensorEvent> {
+        val appContext = activity.applicationContext
+        val sensorManager = appContext.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensor = sensorManager.getDefaultSensor(sensorType)
+        if (sensor == null) {
+            Toast.makeText(activity, "You do not have the sensors to create a compass", Toast.LENGTH_SHORT).show()
+            return Observable.error(Error("Do not have the correct sensors for a rotation vector fusion sensor"))
+        }
+
+        return Observable.create<SensorEvent> {
+            emitter: ObservableEmitter<SensorEvent> ->
+            val listener = object : SensorEventListener2 {
+                override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
+                }
+
+                override fun onFlushCompleted(p0: Sensor?) {
+                }
+
+                override fun onSensorChanged(event: SensorEvent) {
+                    emitter.onNext(event)
+                }
+            }
+
+            emitter.setCancellable({
+                sensorManager.unregisterListener(listener, sensor)
+                emitter.onComplete()
+            })
+
+            sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
     fun getScreenSize(c: Context): Point {
         val display = (c.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
         val size = Point()
