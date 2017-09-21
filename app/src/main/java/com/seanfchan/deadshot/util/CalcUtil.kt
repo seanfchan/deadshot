@@ -1,5 +1,7 @@
 package com.seanfchan.deadshot.util
 
+import android.content.Context
+
 object CalcUtil {
     /**
      * http://www.movable-type.co.uk/scripts/latlong.html
@@ -25,5 +27,13 @@ object CalcUtil {
      */
     fun getDistanceWithAltitude(distance: Double, height1: Double, height2: Double): Double {
         return Math.sqrt(Math.pow(distance, 2.0) + Math.pow(height2 - height1, 2.0))
+    }
+
+    fun convertMetersToInch(meters: Double): Double {
+        return meters * 39.37007874
+    }
+
+    fun convertDegreeToPixels(c: Context, degree: Double): Double {
+        return degree * Constants.INCHES_ON_SCREEN_PER_DEGREE * Util.getScreenDensityDpi(c)
     }
 }

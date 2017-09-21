@@ -15,4 +15,10 @@
         android:textColor="@android:color/white"
         android:text="@string/call_sign_button"/>
 
+    <FrameLayout
+        android:id="@+id/target_box"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:background="@color/red"/>
+
 </RelativeLayout>

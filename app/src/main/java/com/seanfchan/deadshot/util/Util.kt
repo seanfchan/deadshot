@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Point
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener2
@@ -14,6 +15,8 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import android.widget.Toast
 import io.reactivex.Observable
 import io.reactivex.ObservableEmitter
@@ -90,5 +93,20 @@ object Util {
 
             sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
+    }
+
+    fun getScreenSize(c: Context): Point {
+        val display = (c.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        val size = Point()
+        display.getSize(size)
+        return size
+    }
+
+    fun getDisplayMetrics(c: Context): DisplayMetrics {
+        return c.resources.displayMetrics
+    }
+
+    fun getScreenDensityDpi(c: Context): Int {
+        return getDisplayMetrics(c).densityDpi
     }
 }
