@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">deadshot</string>
+    <string name="meters_unit">m</string>
+    <string name="no_altitude">No altitude given</string>
+    <string name="altitude">Altitude</string>
+    <string name="time">Time</string>
+    <string name="back">Back</string>
+    <string name="aimer">Aimer</string>
+    <string name="map">Map</string>
 </resources>

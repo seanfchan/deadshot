@@ -1,19 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="com.seanfchan.deadshot.MainActivity">
 
-    <TextView
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/background"/>
+
+    <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="110dp"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/badge"/>
 
-</android.support.constraint.ConstraintLayout>
+    <TextView
+        android:id="@+id/map_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="70dp"
+        android:layout_marginEnd="44dp"
+        android:layout_marginStart="44dp"
+        android:background="@drawable/button_background"
+        android:padding="@dimen/button_padding"
+        android:text="@string/map"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textColor="@android:color/holo_blue_light"
+        android:elevation="@dimen/button_elevation"
+        android:textSize="22sp"/>
+
+    <TextView
+        android:id="@+id/aimer_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/map_button"
+        android:layout_marginBottom="30dp"
+        android:layout_marginEnd="44dp"
+        android:layout_marginStart="44dp"
+        android:background="@drawable/button_background"
+        android:padding="@dimen/button_padding"
+        android:text="@string/aimer"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textColor="@android:color/holo_blue_light"
+        android:elevation="@dimen/button_elevation"
+        android:textSize="22sp"/>
+
+</RelativeLayout>

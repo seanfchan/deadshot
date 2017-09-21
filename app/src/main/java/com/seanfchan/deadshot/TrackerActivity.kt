@@ -4,6 +4,7 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.View
+import com.seanfchan.deadshot.api.APRSEntry
 import com.seanfchan.deadshot.api.APRSResponse
 import com.seanfchan.deadshot.api.APRSService
 import com.seanfchan.deadshot.util.Constants
@@ -74,7 +75,7 @@ class TrackerActivity : AppCompatActivity() {
         }
     }
 
-    fun aprsPollingObservable(): Observable<APRSResponse> {
+    fun aprsPollingObservable(): Observable<List<APRSEntry>> {
         return Observable.interval(Constants.APRS_POLLING_INTERVAL_SECONDS, TimeUnit.SECONDS)
                 .observeOn(Schedulers.io())
                 .flatMap {
@@ -85,13 +86,8 @@ class TrackerActivity : AppCompatActivity() {
                 }
     }
 
-    fun handleAPRSResponse(response: APRSResponse) {
-        if (!response.isSuccess()) {
-            return
-        }
-
-        val entries = response.entries
-        if (entries == null || entries.isEmpty()) {
+    fun handleAPRSResponse(entries: List<APRSEntry>) {
+        if (entries.isEmpty()) {
             return
         }
     }
