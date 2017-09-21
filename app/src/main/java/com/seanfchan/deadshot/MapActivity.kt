@@ -18,6 +18,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.support.annotation.ColorInt
+import android.support.annotation.DrawableRes
 import com.google.android.gms.maps.model.BitmapDescriptor
 
 class MapActivity : AppCompatActivity(), GoogleMap.InfoWindowAdapter {
@@ -149,7 +151,7 @@ class MapActivity : AppCompatActivity(), GoogleMap.InfoWindowAdapter {
             val listOfPositions = it
             listOfPositions.forEach { builder.include(renderEntry(it,
                     listOfPositions.indexOf(it) == (listOfPositions.count() - 1))) }
-            renderPolyline(listOfPositions)
+            renderPolyline(listOfPositions, it.size > 0 && it[0].type == CAR_TYPE)
         }
         zoomMapIfNeeded(builder.build())
     }
@@ -196,14 +198,17 @@ class MapActivity : AppCompatActivity(), GoogleMap.InfoWindowAdapter {
 
     private fun createMarker(altitude: String, time: String, position: LatLng, isCar: Boolean, isLast: Boolean):
             MarkerOptions {
+        @DrawableRes
         val iconResource: Int
-        if (isCar) {
+
+        if (isCar && isLast) {
             iconResource = R.drawable.car_icon
         } else if (isLast) {
             iconResource = R.drawable.balloon_icon
         } else {
             iconResource = R.drawable.balloon_point
         }
+
         return MarkerOptions()
                 .title(altitude)
                 .snippet(time)
@@ -230,17 +235,27 @@ class MapActivity : AppCompatActivity(), GoogleMap.InfoWindowAdapter {
         }
     }
 
-    private fun renderPolyline(entries: List<APRSEntry>) {
+    private fun renderPolyline(entries: List<APRSEntry>, isCar: Boolean) {
         val polylinePointList: MutableList<LatLng> = ArrayList()
         for (entry in entries) {
             val lat: String = entry.lat ?: continue
             val lng: String = entry.lng ?: continue
             polylinePointList.add(LatLng(lat.toDouble(), lng.toDouble()))
         }
+
+        @ColorInt
+        val lineColor: Int
+
+        if (isCar) {
+            lineColor = resources.getColor(android.R.color.holo_blue_light)
+        } else {
+            lineColor = resources.getColor(R.color.line_color)
+        }
+
         currentPolylines.add(map.addPolyline(
                 PolylineOptions()
                         .width(resources.getDimensionPixelOffset(R.dimen.line_width).toFloat())
-                        .color(resources.getColor(R.color.line_color))
+                        .color(lineColor)
                         .addAll(polylinePointList)
         ))
     }
